@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform/config"
+	"github.com/hashicorp/terraform/config/configschema"
 	"github.com/hashicorp/terraform/terraform"
 )
 
@@ -185,6 +186,11 @@ func (p *Provider) TestReset() error {
 	return nil
 }
 
+// ProviderSchema implementation of terraform.ResourceProvider interface.
+func (p *Provider) ProviderSchema() (*configschema.Block, error) {
+	return schemaMap(p.Schema).CoreConfigSchema(), nil
+}
+
 // Input implementation of terraform.ResourceProvider interface.
 func (p *Provider) Input(
 	input terraform.UIInput,
@@ -311,6 +317,15 @@ func (p *Provider) Resources() []terraform.ResourceType {
 	return result
 }
 
+// ResourceTypeSchema implementation of terraform.ResourceProvider interface.
+func (p *Provider) ResourceTypeSchema(name string) (*configschema.Block, error) {
+	resource, exists := p.ResourcesMap[name]
+	if !exists {
+		return nil, fmt.Errorf("no resource type named %q", name)
+	}
+	return resource.CoreConfigSchema(), nil
+}
+
 func (p *Provider) ImportState(
 	info *terraform.InstanceInfo,
 	id string) ([]*terraform.InstanceState, error) {
@@ -414,4 +429,13 @@ func (p *Provider) DataSources() []terraform.DataSource {
 	}
 
 	return result
+}
+
+// DataSourceSchema implementation of terraform.ResourceProvider interface.
+func (p *Provider) DataSourceSchema(name string) (*configschema.Block, error) {
+	dataSource, exists := p.DataSourcesMap[name]
+	if !exists {
+		return nil, fmt.Errorf("no data source named %q", name)
+	}
+	return dataSource.CoreConfigSchema(), nil
 }

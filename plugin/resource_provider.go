@@ -4,6 +4,7 @@ import (
 	"net/rpc"
 
 	"github.com/hashicorp/go-plugin"
+	"github.com/hashicorp/terraform/config/configschema"
 	"github.com/hashicorp/terraform/terraform"
 )
 
@@ -39,6 +40,17 @@ func (p *ResourceProvider) Stop() error {
 	}
 
 	return err
+}
+
+func (p *ResourceProvider) ProviderSchema() (*configschema.Block, error) {
+	var result ResourceProviderConfigSchemaResponse
+
+	err := p.Client.Call("Plugin.ProviderSchema", new(interface{}), &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Schema, result.Error
 }
 
 func (p *ResourceProvider) Input(
@@ -245,6 +257,27 @@ func (p *ResourceProvider) Resources() []terraform.ResourceType {
 	return result
 }
 
+func (p *ResourceProvider) ResourceTypeSchema(name string) (*configschema.Block, error) {
+	var result ResourceProviderConfigSchemaResponse
+
+	err := p.Client.Call("Plugin.ResourceTypeSchema", new(interface{}), &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Schema, result.Error
+}
+
+func (s *ResourceProviderServer) ResourceTypeSchema(
+	name string,
+	result *ResourceProviderConfigSchemaResponse,
+) error {
+	schema, err := s.Provider.ResourceTypeSchema(name)
+	result.Schema = schema
+	result.Error = plugin.NewBasicError(err)
+	return nil
+}
+
 func (p *ResourceProvider) ReadDataDiff(
 	info *terraform.InstanceInfo,
 	c *terraform.ResourceConfig) (*terraform.InstanceDiff, error) {
@@ -295,6 +328,17 @@ func (p *ResourceProvider) DataSources() []terraform.DataSource {
 	}
 
 	return result
+}
+
+func (p *ResourceProvider) DataSourceSchema(name string) (*configschema.Block, error) {
+	var result ResourceProviderConfigSchemaResponse
+
+	err := p.Client.Call("Plugin.DataSourceSchema", new(interface{}), &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Schema, result.Error
 }
 
 func (p *ResourceProvider) Close() error {
@@ -407,6 +451,11 @@ type ResourceProviderValidateResourceResponse struct {
 	Errors   []*plugin.BasicError
 }
 
+type ResourceProviderConfigSchemaResponse struct {
+	Schema *configschema.Block
+	Error  *plugin.BasicError
+}
+
 func (s *ResourceProviderServer) Stop(
 	_ interface{},
 	reply *ResourceProviderStopResponse) error {
@@ -415,6 +464,15 @@ func (s *ResourceProviderServer) Stop(
 		Error: plugin.NewBasicError(err),
 	}
 
+	return nil
+}
+
+func (s *ResourceProviderServer) ProviderSchema(
+	result *ResourceProviderConfigSchemaResponse,
+) error {
+	schema, err := s.Provider.ProviderSchema()
+	result.Schema = schema
+	result.Error = plugin.NewBasicError(err)
 	return nil
 }
 
@@ -574,5 +632,15 @@ func (s *ResourceProviderServer) DataSources(
 	nothing interface{},
 	result *[]terraform.DataSource) error {
 	*result = s.Provider.DataSources()
+	return nil
+}
+
+func (s *ResourceProviderServer) DataSourceSchema(
+	name string,
+	result *ResourceProviderConfigSchemaResponse,
+) error {
+	schema, err := s.Provider.DataSourceSchema(name)
+	result.Schema = schema
+	result.Error = plugin.NewBasicError(err)
 	return nil
 }

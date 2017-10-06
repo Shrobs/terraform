@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/terraform/config/configschema"
 	"github.com/hashicorp/terraform/plugin/discovery"
 )
 
@@ -20,6 +21,15 @@ type ResourceProvider interface {
 	/*********************************************************************
 	* Functions related to the provider
 	*********************************************************************/
+
+	// ProviderSchema returns the config schema for the main provider
+	// configuration, as would appear in a "provider" block in the
+	// configuration files.
+	//
+	// Currently not all providers support schema. Callers must therefore
+	// expect this function to fail, and treat that failure as meaning that
+	// no schema is available.
+	ProviderSchema() (*configschema.Block, error)
 
 	// Input is called to ask the provider to ask the user for input
 	// for completing the configuration if necesarry.
@@ -78,6 +88,15 @@ type ResourceProvider interface {
 	* Functions related to individual resources
 	*********************************************************************/
 
+	// ResourceTypeSchema returns the config schema for a particular
+	// resource type, as would appear in a "resource" block in the
+	// configuration files.
+	//
+	// Currently not all providers support schema. Callers must therefore
+	// expect this function to fail, and treat that failure as meaning that
+	// no schema is available.
+	ResourceTypeSchema(name string) (*configschema.Block, error)
+
 	// ValidateResource is called once at the beginning with the raw
 	// configuration (no interpolation done) and can return a list of warnings
 	// and/or errors.
@@ -134,6 +153,15 @@ type ResourceProvider interface {
 	/*********************************************************************
 	* Functions related to data resources
 	*********************************************************************/
+
+	// DataSourceSchema returns the config schema for a particular
+	// data source, as would appear in a "data" block in the
+	// configuration files.
+	//
+	// Currently not all providers support schema. Callers must therefore
+	// expect this function to fail, and treat that failure as meaning that
+	// no schema is available.
+	DataSourceSchema(name string) (*configschema.Block, error)
 
 	// ValidateDataSource is called once at the beginning with the raw
 	// configuration (no interpolation done) and can return a list of warnings
